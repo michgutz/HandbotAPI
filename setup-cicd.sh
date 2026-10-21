@@ -26,6 +26,17 @@ DEPLOYER_SA="${DEPLOYER_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 RUNTIME_SA="${SERVICE_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format 'value(projectNumber)')"
 
+# A newly created service account can take a little while to be usable in IAM bindings.
+retry() {
+  local attempt
+  for attempt in 1 2 3 4 5 6; do
+    "$@" && return 0
+    echo "    retrying in 10s (attempt ${attempt}/6)..." >&2
+    sleep 10
+  done
+  "$@"
+}
+
 echo "==> Enabling APIs needed for Workload Identity Federation"
 gcloud services enable iamcredentials.googleapis.com sts.googleapis.com --project "${PROJECT_ID}"
 
@@ -38,14 +49,14 @@ fi
 
 echo "==> Granting deployer roles"
 for role in roles/run.admin roles/artifactregistry.writer; do
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  retry gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member "serviceAccount:${DEPLOYER_SA}" \
     --role "${role}" \
     --condition None \
     >/dev/null
 done
 # Lets the deployer attach the runtime service account to the Cloud Run service (and nothing else).
-gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
+retry gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
   --member "serviceAccount:${DEPLOYER_SA}" \
   --role roles/iam.serviceAccountUser \
   --project "${PROJECT_ID}" \
@@ -69,7 +80,7 @@ if ! gcloud iam workload-identity-pools providers describe "${PROVIDER_ID}" --wo
 fi
 
 echo "==> Allowing ${GITHUB_REPO} to impersonate the deployer"
-gcloud iam service-accounts add-iam-policy-binding "${DEPLOYER_SA}" \
+retry gcloud iam service-accounts add-iam-policy-binding "${DEPLOYER_SA}" \
   --member "principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_REPO}" \
   --role roles/iam.workloadIdentityUser \
   --project "${PROJECT_ID}" \
