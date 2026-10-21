@@ -35,7 +35,14 @@ namespace HandbotAPI.Services
             var payload = JsonSerializer.Serialize(new
             {
                 query,
-                pageSize
+                pageSize,
+                contentSearchSpec = new
+                {
+                    snippetSpec = new
+                    {
+                        returnSnippet = true
+                    }
+                }
             });
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
