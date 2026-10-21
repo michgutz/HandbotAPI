@@ -3,4 +3,27 @@
 GET {{HandbotAPI_HostAddress}}/weatherforecast/
 Accept: application/json
 
+### Documents in the knowledge base
+GET {{HandbotAPI_HostAddress}}/Documents
+Accept: application/json
+
+### Upload a PDF and start indexing it (id and title default to the file name)
+POST {{HandbotAPI_HostAddress}}/Documents
+Content-Type: multipart/form-data; boundary=handbot
+
+--handbot
+Content-Disposition: form-data; name="file"; filename="remote-work.pdf"
+Content-Type: application/pdf
+
+< ./remote-work.pdf
+--handbot
+Content-Disposition: form-data; name="title"
+
+Remote Work
+--handbot
+Content-Disposition: form-data; name="sourceUrl"
+
+https://docs.google.com/document/d/your-doc-id/edit
+--handbot--
+
 ###
