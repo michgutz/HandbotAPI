@@ -35,7 +35,13 @@ namespace HandbotAPI.Services
             var payload = JsonSerializer.Serialize(new
             {
                 query,
-                pageSize
+                pageSize,
+                // The data store is chunked (layout parser), so DOCUMENTS mode returns no text; CHUNKS returns the passages for RAG.
+                contentSearchSpec = new
+                {
+                    searchResultMode = "CHUNKS",
+                    chunkSpec = new { numPreviousChunks = 1, numNextChunks = 1 }
+                }
             });
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
@@ -43,6 +49,7 @@ namespace HandbotAPI.Services
                 Content = new StringContent(payload, Encoding.UTF8, "application/json")
             };
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            request.Headers.Add("X-Goog-User-Project", _options.ProjectId);
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
