@@ -5,6 +5,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+builder.Services.Configure<DocumentStorageOptions>(builder.Configuration.GetSection(DocumentStorageOptions.SectionName));
+builder.Services.AddHttpClient<IDocumentService, DocumentService>();
+
 builder.Services.Configure<VertexAiSearchOptions>(builder.Configuration.GetSection(VertexAiSearchOptions.SectionName));
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 builder.Services.AddHttpClient<IVertexAiSearchService, VertexAiSearchService>();

@@ -9,8 +9,10 @@
 #   AR_REPO               Artifact Registry repo name   (default: handbot)
 #   DATASTORE_PROJECT_ID  Project that owns the Vertex AI Search data store
 #                         (default: massive-incline-462117-n7)
+#   DOCUMENTS_BUCKET      Bucket with the PDFs the data store indexes
+#                         (default: tech9-handbooks-604566589662)
 #   GRANT_DATASTORE_ROLE  Set to "false" to skip granting the service account access
-#                         to the data store (e.g. if the data store owner grants it).
+#                         to the data store and the bucket (e.g. if their owner grants it).
 #   RUNTIME_SA            Use an existing service account (email) for Cloud Run instead of
 #                         creating one; also skips the data store grant.
 #   LOCAL_BUILD           Set to "true" to build with local docker buildx and push to
@@ -18,7 +20,7 @@
 #
 # The caller needs permission to enable APIs, create the Artifact Registry repo and
 # service account, run Cloud Build, deploy Cloud Run, and (unless skipped) set IAM
-# policy on DATASTORE_PROJECT_ID.
+# policy on DATASTORE_PROJECT_ID and DOCUMENTS_BUCKET.
 
 set -euo pipefail
 
@@ -27,6 +29,7 @@ set -euo pipefail
 SERVICE_NAME="${SERVICE_NAME:-handbot-api}"
 AR_REPO="${AR_REPO:-handbot}"
 DATASTORE_PROJECT_ID="${DATASTORE_PROJECT_ID:-massive-incline-462117-n7}"
+DOCUMENTS_BUCKET="${DOCUMENTS_BUCKET:-tech9-handbooks-604566589662}"
 GRANT_DATASTORE_ROLE="${GRANT_DATASTORE_ROLE:-true}"
 
 SA_NAME="${SERVICE_NAME}"
@@ -60,11 +63,19 @@ if [[ -z "${RUNTIME_SA:-}" ]]; then
 fi
 
 if [[ -z "${RUNTIME_SA:-}" && "${GRANT_DATASTORE_ROLE}" == "true" ]]; then
-  echo "==> Granting Discovery Engine Viewer on ${DATASTORE_PROJECT_ID} to ${SA_EMAIL}"
+  # Editor, not Viewer: POST /Documents imports into the data store.
+  echo "==> Granting Discovery Engine Editor on ${DATASTORE_PROJECT_ID} to ${SA_EMAIL}"
   gcloud projects add-iam-policy-binding "${DATASTORE_PROJECT_ID}" \
     --member "serviceAccount:${SA_EMAIL}" \
-    --role roles/discoveryengine.viewer \
+    --role roles/discoveryengine.editor \
     --condition None \
+    >/dev/null
+
+  # /Documents lists, stores and (after a failed import) deletes the PDFs.
+  echo "==> Granting Storage Object Admin on gs://${DOCUMENTS_BUCKET} to ${SA_EMAIL}"
+  gcloud storage buckets add-iam-policy-binding "gs://${DOCUMENTS_BUCKET}" \
+    --member "serviceAccount:${SA_EMAIL}" \
+    --role roles/storage.objectAdmin \
     >/dev/null
 fi
 
