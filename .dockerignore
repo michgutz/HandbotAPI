@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/*.user
+.git/
+.gitignore
+.gitattributes
+Dockerfile
+.dockerignore
+deploy.sh
+setup-cicd.sh
+.github/
