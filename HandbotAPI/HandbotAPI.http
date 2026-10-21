@@ -1,0 +1,6 @@
+@HandbotAPI_HostAddress = http://localhost:5258
+
+GET {{HandbotAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
